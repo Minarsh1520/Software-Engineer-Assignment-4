@@ -61,7 +61,6 @@ public class Person {
     public static Person fetchPersonById(String personID) {
         File inputFile = new File(FILE_NAME);
         if (!inputFile.exists()) {
-            System.out.println("Data file not found.");
             return null;
         }
 
@@ -108,27 +107,20 @@ public class Person {
         String newAddress,
         String newBirthdate
     ) {
-        // Create a temp Person for access to validation methods
-        Person tempPerson = new Person(currentPersonID, "", "", "", "");
-
-        // Validate new input values
-        if (!tempPerson.validatePersonID(newPersonID)) {
-            System.out.println("Invalid new Person ID.");
+        // Validate new input values using static methods
+        if (!validatePersonID(newPersonID)) {
             return false;
         }
-        if (!tempPerson.validateAddress(newAddress)) {
-            System.out.println("Invalid new address. Must include 'Victoria' and 'Australia'.");
+        if (!validateAddress(newAddress)) {
             return false;
         }
-        if (!tempPerson.validateDate(newBirthdate)) {
-            System.out.println("Invalid new birthdate format. Use dd-MM-yyyy.");
+        if (!validateDate(newBirthdate)) {
             return false;
         }
 
         // Fetch existing person to check business logic constraints
         Person existingPerson = fetchPersonById(currentPersonID);
         if (existingPerson == null) {
-            System.out.println("Person not found.");
             return false;
         }
 
@@ -141,20 +133,17 @@ public class Person {
             !existingPerson.lastName.equals(newLastName) ||
             !existingPerson.address.equals(newAddress)
         )) {
-            System.out.println("Cannot change name or address while changing birthdate.");
             return false;
         }
 
         // Under 18 cannot change address
         if (currentAge < 18 && !existingPerson.address.equals(newAddress)) {
-            System.out.println("Underage individuals cannot change address.");
             return false;
         }
 
         // If original ID starts with even digit, ID cannot be changed
         if (!newPersonID.equals(existingPerson.personID) &&
             Character.getNumericValue(existingPerson.personID.charAt(0)) % 2 == 0) {
-            System.out.println("Cannot change ID if current ID starts with an even number.");
             return false;
         }
 
@@ -191,17 +180,14 @@ public class Person {
 
             // Replace original file with updated temp file
             if (!inputFile.delete()) {
-                System.out.println("Failed to delete original file.");
                 return false;
             }
             if (!tempFile.renameTo(inputFile)) {
-                System.out.println("Failed to rename temp file.");
                 return false;
             }
 
             return true;
         } catch (IOException e) {
-            System.out.println("Error updating file: " + e.getMessage());
             return false;
         }
     }
@@ -258,7 +244,7 @@ public class Person {
      * Rules:
      * - Exactly 10 chars
      * - First 2 chars digits 2-9
-     * - Middle 5 chars contain at least 2 special chars from allowed set
+     * - Middle 6 chars (positions 2-7) contain at least 2 special chars from allowed set
      * - Last 2 chars uppercase letters
      * @param id The person ID string to validate
      * @return true if valid, false otherwise
@@ -268,7 +254,7 @@ public class Person {
 
         char first = id.charAt(0);
         char second = id.charAt(1);
-        String middleFive = id.substring(2, 7);
+        String middleSix = id.substring(2, 8);  // Positions 2-7 (6 characters)
         char ninth = id.charAt(8);
         char tenth = id.charAt(9);
 
@@ -276,10 +262,10 @@ public class Person {
         if (!Character.isDigit(first) || !Character.isDigit(second)) return false;
         if (first < '2' || first > '9' || second < '2' || second > '9') return false;
 
-        // Middle five must contain at least 2 allowed special characters
+        // Middle six must contain at least 2 allowed special characters
         String allowedSpecials = "@#$%^&*!()_+=-";
         int specialCount = 0;
-        for (char c : middleFive.toCharArray()) {
+        for (char c : middleSix.toCharArray()) {
             if (!Character.isLetterOrDigit(c)) {
                 if (allowedSpecials.indexOf(c) == -1) return false;
                 specialCount++;
