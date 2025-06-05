@@ -24,6 +24,7 @@ public class Person {
 
     private static String FILE_NAME = "persons.txt";
 
+    // Constructor to initialize a Person object with given details
     public Person(String personID, String firstName, String lastName, String address, String birthdate) {
         this.personID = personID;
         this.firstName = firstName;
@@ -32,11 +33,17 @@ public class Person {
         this.birthdate = birthdate;
     }
 
+    /**
+     * Adds the current person to the file after validation.
+     * @return true if successfully added, false otherwise.
+     */
     public boolean addPerson() {
+        // Validate all required fields before writing
         if (!validatePersonID(personID) || !validateAddress(address) || !validateDate(birthdate)) {
             return false;
         }
 
+        // Append the person's data as a new line in the file
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_NAME, true))) {
             writer.write(personID + "," + firstName + "," + lastName + "," + address + "," + birthdate);
             writer.newLine();
@@ -46,6 +53,11 @@ public class Person {
         }
     }
 
+    /**
+     * Reads the file and returns a Person object matching the given personID.
+     * @param personID The ID to search for.
+     * @return Person object if found, otherwise null.
+     */
     public static Person fetchPersonById(String personID) {
         File inputFile = new File(FILE_NAME);
         if (!inputFile.exists()) {
@@ -53,33 +65,41 @@ public class Person {
             return null;
         }
 
+        // Read file line by line and parse fields
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFile))) {
             String currentLine;
             while ((currentLine = reader.readLine()) != null) {
                 String[] data = currentLine.split(",", -1);
                 if (data.length < 5) {
-                    continue;
+                    continue; // Skip malformed lines
                 }
 
                 if (data[0].equals(personID)) {
+                    // Found matching person, return new Person object
                     String firstName = data[1];
                     String lastName = data[2];
                     String address = data[3];
                     String birthdate = data[4];
 
-                    Person foundPerson = new Person(personID, firstName, lastName, address, birthdate);
-                    // Optional: parse other fields if needed
-
-                    return foundPerson;
+                    return new Person(personID, firstName, lastName, address, birthdate);
                 }
             }
         } catch (IOException e) {
             System.out.println("Error reading data file: " + e.getMessage());
         }
 
-        return null; // person not found
+        return null; // Person not found
     }
 
+    /**
+     * Updates personal details of a person identified by currentPersonID.
+     * Enforces validation and business rules:
+     * - Validates new ID, address, birthdate format
+     * - Restricts changing name/address if birthdate is changed
+     * - Under 18 cannot change address
+     * - If original ID starts with even digit, ID cannot be changed
+     * @return true if update is successful, false otherwise
+     */
     public static boolean updatePersonalDetails(
         String currentPersonID,
         String newPersonID,
@@ -88,8 +108,10 @@ public class Person {
         String newAddress,
         String newBirthdate
     ) {
-        // Create a temporary Person for validation methods
+        // Create a temp Person for access to validation methods
         Person tempPerson = new Person(currentPersonID, "", "", "", "");
+
+        // Validate new input values
         if (!tempPerson.validatePersonID(newPersonID)) {
             System.out.println("Invalid new Person ID.");
             return false;
@@ -103,7 +125,7 @@ public class Person {
             return false;
         }
 
-        // Fetch the existing person
+        // Fetch existing person to check business logic constraints
         Person existingPerson = fetchPersonById(currentPersonID);
         if (existingPerson == null) {
             System.out.println("Person not found.");
@@ -113,7 +135,7 @@ public class Person {
         boolean birthdateChanging = !existingPerson.birthdate.equals(newBirthdate);
         int currentAge = existingPerson.getAge(existingPerson.birthdate);
 
-        // Restrictions if birthdate changes
+        // If birthdate changes, name and address must remain unchanged
         if (birthdateChanging && (
             !existingPerson.firstName.equals(newFirstName) ||
             !existingPerson.lastName.equals(newLastName) ||
@@ -129,13 +151,14 @@ public class Person {
             return false;
         }
 
-        // Cannot change ID if original ID starts with even digit
+        // If original ID starts with even digit, ID cannot be changed
         if (!newPersonID.equals(existingPerson.personID) &&
             Character.getNumericValue(existingPerson.personID.charAt(0)) % 2 == 0) {
             System.out.println("Cannot change ID if current ID starts with an even number.");
             return false;
         }
 
+        // Update file: create a temporary file with updated data
         try {
             File inputFile = new File(FILE_NAME);
             File tempFile = new File("temp_persons.txt");
@@ -147,17 +170,17 @@ public class Person {
                 String[] data = currentLine.split(",", -1);
 
                 if (data[0].equals(currentPersonID)) {
-                    // Rebuild extra fields string (preserve everything after 5th element)
+                    // Preserve all fields after index 4 (e.g. demerit points) intact
                     StringBuilder extraFields = new StringBuilder();
                     for (int i = 5; i < data.length; i++) {
                         extraFields.append(",").append(data[i]);
                     }
 
-                    // Write updated line preserving extra fields
+                    // Write updated person info
                     writer.write(newPersonID + "," + newFirstName + "," + newLastName + "," +
                                 newAddress + "," + newBirthdate + extraFields.toString());
                 } else {
-                    // Write unchanged line
+                    // Write unchanged line for other persons
                     writer.write(currentLine);
                 }
                 writer.newLine();
@@ -166,6 +189,7 @@ public class Person {
             writer.close();
             reader.close();
 
+            // Replace original file with updated temp file
             if (!inputFile.delete()) {
                 System.out.println("Failed to delete original file.");
                 return false;
@@ -182,24 +206,38 @@ public class Person {
         }
     }
 
-
+    /**
+     * Adds demerit points for an offense date.
+     * Validates date and points range.
+     * Accumulates points for offenses within the last 2 years.
+     * Updates suspension status based on age and total points.
+     * Appends demerit info to the file.
+     * @param offenseDate Date string of offense in dd-MM-yyyy format.
+     * @param points Number of points (1 to 6).
+     * @return "Success" or "Failed"
+     */
     public String addDemeritPoints(String offenseDate, int points) {
+        // Validate offense date format and points range
         if (!validateDate(offenseDate) || points < 1 || points > 6) return "Failed";
 
         try {
             Date date = new SimpleDateFormat("dd-MM-yyyy").parse(offenseDate);
-            // accumulate points for the same date
+            // Add points for the given date, accumulating if date repeats
             int prev = demeritPoints.getOrDefault(date, 0);
             demeritPoints.put(date, prev + points);
+
+            // Calculate total points within last 2 years
             int totalPoints = calculatePointsWithinTwoYears();
 
             int age = getAge(birthdate);
+            // Determine suspension based on age and points thresholds
             if ((age < 21 && totalPoints > 6) || (age >= 21 && totalPoints > 12)) {
                 isSuspended = true;
             } else {
                 isSuspended = false;
             }
 
+            // Append demerit record to file
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_NAME, true))) {
                 writer.write(personID + ",Demerit:" + points + ",Date:" + offenseDate);
                 writer.newLine();
@@ -210,10 +248,21 @@ public class Person {
         }
     }
 
+    // Returns whether the person is currently suspended
     public boolean isSuspended() {
         return isSuspended;
     }
 
+    /**
+     * Validates personID string.
+     * Rules:
+     * - Exactly 10 chars
+     * - First 2 chars digits 2-9
+     * - Middle 5 chars contain at least 2 special chars from allowed set
+     * - Last 2 chars uppercase letters
+     * @param id The person ID string to validate
+     * @return true if valid, false otherwise
+     */
     public static boolean validatePersonID(String id) {
         if (id == null || id.length() != 10) return false;
 
@@ -227,7 +276,7 @@ public class Person {
         if (!Character.isDigit(first) || !Character.isDigit(second)) return false;
         if (first < '2' || first > '9' || second < '2' || second > '9') return false;
 
-        // 2 middle five must be alphanumeric or a special character
+        // Middle five must contain at least 2 allowed special characters
         String allowedSpecials = "@#$%^&*!()_+=-";
         int specialCount = 0;
         for (char c : middleFive.toCharArray()) {
@@ -244,12 +293,26 @@ public class Person {
         return true;
     }
 
+    /**
+     * Validates address format.
+     * Rules:
+     * - Must contain 5 parts separated by '|'
+     * - Fourth part must be "Victoria"
+     * - Fifth part must be "Australia"
+     * @param addr Address string to validate
+     * @return true if valid, false otherwise
+     */
     public static boolean validateAddress(String addr) {
         if (addr == null) return false;
         String[] parts = addr.split("\\|");
         return parts.length == 5 && parts[3].equalsIgnoreCase("Victoria") && parts[4].equalsIgnoreCase("Australia");
     }
 
+    /**
+     * Validates date string format "dd-MM-yyyy"
+     * @param date Date string to validate
+     * @return true if valid date format, false otherwise
+     */
     public static boolean validateDate(String date) {
         if (date == null) return false;
         try {
@@ -260,6 +323,11 @@ public class Person {
         }
     }
 
+    /**
+     * Calculates age in years from birthdate string
+     * @param birthDateStr Date string in "dd-MM-yyyy" format
+     * @return Age in years, or 0 if parsing error
+     */
     private int getAge(String birthDateStr) {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
@@ -267,7 +335,10 @@ public class Person {
             Calendar birth = Calendar.getInstance();
             birth.setTime(birthDate);
             Calendar today = Calendar.getInstance();
+
             int age = today.get(Calendar.YEAR) - birth.get(Calendar.YEAR);
+
+            // Adjust if birthdate has not occurred yet this year
             if (today.get(Calendar.DAY_OF_YEAR) < birth.get(Calendar.DAY_OF_YEAR)) age--;
             return age;
         } catch (ParseException e) {
@@ -275,6 +346,10 @@ public class Person {
         }
     }
 
+    /**
+     * Calculates total demerit points accumulated within the last 2 years
+     * @return sum of points in the last 2 years
+     */
     private int calculatePointsWithinTwoYears() {
         Calendar now = Calendar.getInstance();
         now.add(Calendar.YEAR, -2);
@@ -289,9 +364,8 @@ public class Person {
         return total;
     }
 
+    // Allows setting a custom file name for storage (useful for testing)
     public static void setFileName(String fileName) {
         FILE_NAME = fileName;
     }
 }
-
-
