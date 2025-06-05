@@ -114,13 +114,13 @@ public class Person {
     }
 
     public static boolean validatePersonID(String id) {
-        if (id == null || id.length() != 9) return false;
+        if (id == null || id.length() != 10) return false;
 
         char first = id.charAt(0);
         char second = id.charAt(1);
         String middleFive = id.substring(2, 7);
-        char eighth = id.charAt(7);
         char ninth = id.charAt(8);
+        char tenth = id.charAt(9);
 
         // First and second must be digits between 2 and 9
         if (!Character.isDigit(first) || !Character.isDigit(second)) return false;
@@ -135,7 +135,7 @@ public class Person {
         }
 
         // Last two must be uppercase letters
-        if (!Character.isUpperCase(eighth) || !Character.isUpperCase(ninth)) return false;
+        if (!Character.isUpperCase(ninth) || !Character.isUpperCase(tenth)) return false;
 
         return true;
     }
@@ -143,7 +143,7 @@ public class Person {
     public static boolean validateAddress(String addr) {
         if (addr == null) return false;
         String[] parts = addr.split("\\|");
-        return parts.length == 5 && parts[4].equalsIgnoreCase("Victoria");
+        return parts.length == 5 && parts[4].equalsIgnoreCase("Victoria") && parts[5].equalsIgnoreCase("Australia");
     }
 
     public static boolean validateDate(String date) {
