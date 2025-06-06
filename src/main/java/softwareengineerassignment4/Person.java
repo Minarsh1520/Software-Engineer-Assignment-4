@@ -8,9 +8,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Person {
@@ -40,6 +43,10 @@ public class Person {
     public boolean addPerson() {
         // Validate all required fields before writing
         if (!validatePersonID(personID) || !validateAddress(address) || !validateDate(birthdate)) {
+            return false;
+        }
+
+        if (fetchPersonById(personID) != null) {
             return false;
         }
 
@@ -207,23 +214,21 @@ public class Person {
         if (!validateDate(offenseDate) || points < 1 || points > 6) return "Failed";
 
         try {
-            Date date = new SimpleDateFormat("dd-MM-yyyy").parse(offenseDate);
-            // Add points for the given date, accumulating if date repeats
-            int prev = demeritPoints.getOrDefault(date, 0);
-            demeritPoints.put(date, prev + points);
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+            sdf.setLenient(false);  // Strict parsing
+            Date offense = sdf.parse(offenseDate);
 
-            // Calculate total points within last 2 years
+            // Store points, accumulating if offense already exists
+            int prev = demeritPoints.getOrDefault(offense, 0);
+            demeritPoints.put(offense, prev + points);
+
+            // Recalculate suspension status based only on the past 2 years
             int totalPoints = calculatePointsWithinTwoYears();
 
             int age = getAge(birthdate);
-            // Determine suspension based on age and points thresholds
-            if ((age < 21 && totalPoints > 6) || (age >= 21 && totalPoints > 12)) {
-                isSuspended = true;
-            } else {
-                isSuspended = false;
-            }
+            isSuspended = (age < 21 && totalPoints > 6) || (age >= 21 && totalPoints > 12);
 
-            // Append demerit record to file
+            // Log the offense to the file
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_NAME, true))) {
                 writer.write(personID + ",Demerit:" + points + ",Date:" + offenseDate);
                 writer.newLine();
@@ -234,7 +239,7 @@ public class Person {
         }
     }
 
-    // Returns whether the person is currently suspended
+    // Checks if person is suspended based on latest offense
     public boolean isSuspended() {
         return isSuspended;
     }
@@ -244,7 +249,7 @@ public class Person {
      * Rules:
      * - Exactly 10 chars
      * - First 2 chars digits 2-9
-     * - Middle 6 chars (positions 2-7) contain at least 2 special chars from allowed set
+     * - Middle 6 chars (positions 3 - 8) contain at least 2 special chars from allowed set
      * - Last 2 chars uppercase letters
      * @param id The person ID string to validate
      * @return true if valid, false otherwise
@@ -254,7 +259,7 @@ public class Person {
 
         char first = id.charAt(0);
         char second = id.charAt(1);
-        String middleSix = id.substring(2, 8);  // Positions 2-7 (6 characters)
+        String middleSix = id.substring(2, 8);  // Positions 2-8 (6 characters)
         char ninth = id.charAt(8);
         char tenth = id.charAt(9);
 
@@ -302,7 +307,9 @@ public class Person {
     public static boolean validateDate(String date) {
         if (date == null) return false;
         try {
-            new SimpleDateFormat("dd-MM-yyyy").parse(date);
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+            sdf.setLenient(false); // <-- strict checking
+            sdf.parse(date);
             return true;
         } catch (ParseException e) {
             return false;
@@ -332,22 +339,43 @@ public class Person {
         }
     }
 
+    private int getSuspensionThreshold() {
+        int age = getAge(birthdate);
+        return (age < 21) ? 6 : 12;
+    }
+
     /**
      * Calculates total demerit points accumulated within the last 2 years
      * @return sum of points in the last 2 years
      */
     private int calculatePointsWithinTwoYears() {
-        Calendar now = Calendar.getInstance();
-        now.add(Calendar.YEAR, -2);
-        Date twoYearsAgo = now.getTime();
+        List<Date> offenseDates = new ArrayList<>(demeritPoints.keySet());
+        Collections.sort(offenseDates);
 
-        int total = 0;
-        for (Map.Entry<Date, Integer> entry : demeritPoints.entrySet()) {
-            if (!entry.getKey().before(twoYearsAgo)) {
-                total += entry.getValue();
+        int maxPoints = 0;
+        for (Date startDate : offenseDates) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(startDate);
+            cal.add(Calendar.YEAR, 2);
+            Date endDate = cal.getTime();
+
+            int total = 0;
+            for (Map.Entry<Date, Integer> entry : demeritPoints.entrySet()) {
+                Date d = entry.getKey();
+                if (!d.before(startDate) && !d.after(endDate)) {
+                    total += entry.getValue();
+                }
             }
+
+            if (total > maxPoints) {
+                maxPoints = total;
+            }
+
+            // Early exit if already enough to suspend
+            if (maxPoints > getSuspensionThreshold()) break;
         }
-        return total;
+
+        return maxPoints;
     }
 
     // Allows setting a custom file name for storage (useful for testing)

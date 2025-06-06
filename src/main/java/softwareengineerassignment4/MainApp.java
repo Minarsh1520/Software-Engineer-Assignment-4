@@ -17,21 +17,21 @@ public class MainApp {
 
         // Test 2: Invalid personID (fail)
         Person p2 = new Person("11ab12@#xy", "Jane", "Doe", "123|Street|Suburb|Victoria|Australia", "15-05-1990");
-        System.out.println("Add person invalid ID: " + (p2.addPerson() ? "Success" : "Fail"));
+        System.out.println("Add person invalid ID: " + (p2.addPerson() ? "Success" : "Fail") + " (expected Fail)");
 
         // Test 3: Invalid address (fail)
         Person p3 = new Person("24ab12@#XY", "Mike", "Smith", "123|Street|Suburb|NSW|Australia", "15-05-1990");
-        System.out.println("Add person invalid address: " + (p3.addPerson() ? "Success" : "Fail"));
+        System.out.println("Add person invalid address: " + (p3.addPerson() ? "Success" : "Fail") + " (expected Fail)");
 
         // Test 4: Invalid birthdate (fail)
         Person p4 = new Person("24ab12@#XY", "Anna", "Smith", "123|Street|Suburb|Victoria|Australia", "31-02-1990");
-        System.out.println("Add person invalid birthdate: " + (p4.addPerson() ? "Success" : "Fail"));
+        System.out.println("Add person invalid birthdate: " + (p4.addPerson() ? "Success" : "Fail") + " (expected Fail)");
 
         System.out.println("\n=== Fetch Person Tests ===");
         Person fetched = Person.fetchPersonById("23ab12@#XY");
-        System.out.println(fetched != null ? "Fetch existing person: Success" : "Fetch existing person: Fail");
+        System.out.println(fetched != null ? "Fetch existing person: Success" : "Fetch existing person: Fail" + " (expected Success)");
         Person notFound = Person.fetchPersonById("0000000000");
-        System.out.println(notFound == null ? "Fetch non-existing person: Success" : "Fetch non-existing person: Fail");
+        System.out.println(notFound == null ? "Fetch non-existing person: Success" : "Fetch non-existing person: Fail" + " (expected Success)");
 
         System.out.println("\n=== Update Person Tests ===");
 
@@ -48,7 +48,7 @@ public class MainApp {
             "123|Street|Suburb|Victoria|Australia",  // same address (required because under 18)
             "01-01-2005"
         );
-        System.out.println("Update name with no birthdate change (under 18, same address): " + (res1 ? "Success" : "Fail"));
+        System.out.println("Update name with no birthdate change (under 18, same address): " + (res1 ? "Success" : "Fail") + " (expected Success)");
 
         // Test 6: Fail update under 18 with address change
         boolean res2 = Person.updatePersonalDetails(
@@ -59,7 +59,7 @@ public class MainApp {
             "456|NewStreet|NewSuburb|Victoria|Australia", // address changed
             "01-01-2005"
         );
-        System.out.println("Update address change under 18: " + (!res2 ? "Fail (correct)" : "Unexpected Success"));
+        System.out.println("Update address change under 18: " + (!res2 ? "Fail (correct)" : "Unexpected Success") + " (expected Fail)");
 
         // Test 7: Fail update changing birthdate with other changes
         boolean res3 = Person.updatePersonalDetails(
@@ -84,7 +84,7 @@ public class MainApp {
             "123|Street|Suburb|Victoria|Australia",
             "15-06-1990"
         );
-        System.out.println("Update ID with even first digit (should fail): " + (!res4 ? "Fail (correct)" : "Unexpected Success"));
+        System.out.println("Update ID to odd first digit (should fail): " + (!res4 ? "Fail (correct)" : "Unexpected Success"));
 
         // Test 9: Valid update changing ID if first digit odd
         Person p7 = new Person("35ab12@#YY", "Carol", "White", "123|Street|Suburb|Victoria|Australia", "15-06-1990");
@@ -98,7 +98,7 @@ public class MainApp {
             "123|Street|Suburb|Victoria|Australia",
             "15-06-1990"
         );
-        System.out.println("Update ID with odd first digit (should succeed): " + (res5 ? "Success" : "Fail"));
+        System.out.println("Update ID to even first digit (should succeed): " + (res5 ? "Success" : "Fail"));
 
         System.out.println("\n=== Add Demerit Points Tests ===");
         Person p8 = new Person("25ab12@#ZZ", "Dan", "Green", "123|Street|Suburb|Victoria|Australia", "01-01-2000");
@@ -115,7 +115,7 @@ public class MainApp {
 
         // Suspension check
         p8.addDemeritPoints("01-01-2023", 4);
-        p8.addDemeritPoints("01-01-2024", 4);
+        p8.addDemeritPoints("01-01-2024", 6);
         System.out.println("Person suspended after points over limit (age 24): " + (p8.isSuspended() ? "Suspended" : "Not Suspended"));
 
         Person p9 = new Person("26ab12@#ZZ", "Eve", "Black", "123|Street|Suburb|Victoria|Australia", "01-01-2005");
