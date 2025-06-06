@@ -123,5 +123,15 @@ public class MainApp {
         p9.addDemeritPoints("01-01-2024", 4);
         p9.addDemeritPoints("01-01-2024", 4);
         System.out.println("Person suspended after points over limit (age 19): " + (p9.isSuspended() ? "Suspended" : "Not Suspended"));
+
+        Person p10 = new Person("27ab12@#ZZ", "Eve", "Black", "123|Street|Suburb|Victoria|Australia", "01-01-1990");
+        p10.addPerson();
+
+        // Adding offenses not within any 2-year window
+        System.out.println("Add valid demerit points: " + p10.addDemeritPoints("01-01-2018", 5));  // total: 5
+        System.out.println("Add valid demerit points: " + p10.addDemeritPoints("01-01-2021", 4));  // total: 9 (but 2018-2021 > 2 years)
+        System.out.println("Add valid demerit points: " + p10.addDemeritPoints("01-01-2024", 5));  // total: 14 (but max in 2-year span = 9)
+
+        System.out.println("Is Suspended? (should print fail) " + p10.isSuspended());   // Should print: false
     }
 }
